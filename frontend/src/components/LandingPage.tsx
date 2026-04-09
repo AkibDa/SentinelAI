@@ -107,7 +107,7 @@ export default function LandingPage() {
             className="flex flex-col items-center justify-center relative z-20"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2, duration: 1 }}
+            transition={{ delay: 0.2, duration: 0.6, ease: 'easeOut' }}
           >
             <h1 className="text-6xl md:text-8xl font-medium tracking-tighter text-white leading-[0.9] mb-12">
               Verify the
@@ -176,22 +176,41 @@ export default function LandingPage() {
                       exit={{ opacity: 0, scale: 0.95 }}
                       className="space-y-8"
                     >
+                      {(() => {
+                        const verdictLabel = (textResult.newsVerdict || textResult.verdict || '').trim();
+                        const verdictLower = verdictLabel.toLowerCase();
+                        const isFakeNews = verdictLower.includes('fake');
+                        const isInconclusive = verdictLower.includes('inconclusive') || verdictLower.includes('insufficient');
+                        const accent = isFakeNews
+                          ? 'rose'
+                          : isInconclusive
+                            ? 'neutral'
+                            : 'emerald';
+
+                        return (
                       <div className="flex flex-col items-center gap-4">
                         <div className={cn(
                           'w-20 h-20 rounded-full flex items-center justify-center border transition-all duration-500',
-                          textResult.verdict === 'Fake'
+                          accent === 'rose'
                             ? 'border-rose-500/30 text-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.1)]'
-                            : 'border-emerald-500/30 text-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.1)]'
+                            : accent === 'emerald'
+                              ? 'border-emerald-500/30 text-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.1)]'
+                              : 'border-white/10 text-white/60 shadow-[0_0_30px_rgba(255,255,255,0.04)]'
                         )}>
-                          {textResult.verdict === 'Fake' ? <ShieldAlert size={40} /> : <ShieldCheck size={40} />}
+                          {accent === 'rose' ? <ShieldAlert size={40} /> : accent === 'emerald' ? <ShieldCheck size={40} /> : <Activity size={40} />}
                         </div>
                         <div className="text-center">
-                          <h3 className={cn('text-3xl font-medium tracking-tighter uppercase', textResult.verdict === 'Fake' ? 'text-rose-500' : 'text-emerald-500')}>
-                            {textResult.verdict}
+                          <h3 className={cn(
+                            'text-3xl font-medium tracking-tighter uppercase',
+                            accent === 'rose' ? 'text-rose-500' : accent === 'emerald' ? 'text-emerald-500' : 'text-white/70'
+                          )}>
+                            {verdictLabel || 'Inconclusive'}
                           </h3>
                           <p className="text-[10px] uppercase tracking-widest text-white/20">Confidence: {textResult.confidence}%</p>
                         </div>
                       </div>
+                        );
+                      })()}
 
                       <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 space-y-3">
                         <div className="flex items-center justify-between">
@@ -202,6 +221,22 @@ export default function LandingPage() {
                           "{textResult.reasoning}"
                         </p>
                       </div>
+
+                      {textResult.evidence && textResult.evidence.length > 0 && (
+                        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[9px] uppercase tracking-widest text-white/20">Evidence</p>
+                            <Activity size={12} className="text-emerald-500/30" />
+                          </div>
+                          <ul className="space-y-2">
+                            {textResult.evidence.slice(0, 4).map((ev, idx) => (
+                              <li key={idx} className="text-xs text-white/60 leading-relaxed">
+                                - {ev}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
 
                       <GlassButton onClick={reset} className="w-full py-3 border border-white/5 text-white/40 hover:text-white">
                         <span className="text-[10px] uppercase tracking-widest">New Text Analysis</span>
@@ -321,7 +356,7 @@ export default function LandingPage() {
                       </GlassButton>
 
                       <p className="text-[10px] text-center uppercase tracking-widest text-white/20">
-                        Powered by Gemini Neural Engine
+                        Verified via Sentinel backend
                       </p>
                     </motion.form>
                   )}

@@ -14,6 +14,9 @@ export default function Dashboard() {
   const bgClass = isFake ? 'bg-rose-500' : 'bg-emerald-500';
   const borderClass = isFake ? 'border-rose-500/30' : 'border-emerald-500/30';
   const glowClass = isFake ? 'shadow-[0_0_50px_rgba(244,63,94,0.2)]' : 'shadow-[0_0_50px_rgba(16,185,129,0.2)]';
+  const framesAnalyzed = typeof result.framesAnalyzed === 'number' ? result.framesAnalyzed : 0;
+  const suspiciousFrames = typeof result.suspiciousFrames === 'number' ? result.suspiciousFrames : 0;
+  const analysisTimestamp = result.timestamp ? new Date(result.timestamp).toLocaleString() : '—';
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center px-6 py-20">
@@ -34,19 +37,19 @@ export default function Dashboard() {
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", damping: 15 }}
+            transition={{ type: "spring", damping: 12, stiffness: 100 }}
             className="relative"
           >
             {/* The Verdict Shield */}
             <div className={cn(
-              "relative z-10 w-64 h-64 rounded-full flex items-center justify-center backdrop-blur-3xl bg-white/[0.02] border transition-all duration-1000",
+              "relative z-10 w-64 h-64 rounded-full flex items-center justify-center backdrop-blur-3xl bg-white/2 border transition-all duration-500",
               borderClass,
               glowClass
             )}>
               <motion.div
                 initial={{ rotateY: 180 }}
                 animate={{ rotateY: 0 }}
-                transition={{ duration: 1, delay: 0.5 }}
+                transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
               >
                 {isFake ? (
                   <ShieldAlert size={120} strokeWidth={1} className={colorClass} />
@@ -64,7 +67,7 @@ export default function Dashboard() {
             <motion.h2 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.2 }}
+              transition={{ delay: 0.8, duration: 0.4, ease: "easeOut" }}
               className={cn("text-6xl font-medium tracking-tighter uppercase", colorClass)}
             >
               {result.verdict}
@@ -72,7 +75,7 @@ export default function Dashboard() {
             <motion.p 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 1.4 }}
+              transition={{ delay: 1, duration: 0.4, ease: "easeOut" }}
               className="text-white/40 text-sm tracking-[0.2em] uppercase"
             >
               Confidence Score: {result.confidence}%
@@ -85,7 +88,7 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 1.6 }}
+            transition={{ delay: 1.2, duration: 0.5, ease: "easeOut" }}
           >
             <GlassEffect className="rounded-3xl border border-white/10">
               <div className="p-8 space-y-8 w-full">
@@ -101,7 +104,7 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <p className="text-[10px] uppercase tracking-widest text-white/20">Frames Analyzed</p>
-                      <p className="text-lg font-mono text-white">{result.framesAnalyzed.toLocaleString()}</p>
+                      <p className="text-lg font-mono text-white">{framesAnalyzed.toLocaleString()}</p>
                     </div>
                   </div>
 
@@ -111,8 +114,8 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <p className="text-[10px] uppercase tracking-widest text-white/20">Suspicious Frames</p>
-                      <p className={cn("text-lg font-mono", result.suspiciousFrames > 0 ? "text-rose-500" : "text-white/40")}>
-                        {result.suspiciousFrames.toLocaleString()}
+                      <p className={cn("text-lg font-mono", suspiciousFrames > 0 ? "text-rose-500" : "text-white/40")}>
+                        {suspiciousFrames.toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -135,9 +138,49 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <p className="text-[10px] uppercase tracking-widest text-white/20">Analysis Timestamp</p>
-                      <p className="text-xs font-mono text-white/60">{new Date(result.timestamp).toLocaleString()}</p>
+                      <p className="text-xs font-mono text-white/60">{analysisTimestamp}</p>
                     </div>
                   </div>
+
+                  {(result.metadataRiskLevel || (result.metadataFlags && result.metadataFlags.length > 0)) && (
+                    <div className="pt-2">
+                      <p className="text-[10px] uppercase tracking-widest text-white/20 mb-2">Metadata Risk</p>
+                      <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-2">
+                        {result.metadataRiskLevel && (
+                          <p className="text-xs font-mono text-white/60">
+                            Risk Level: <span className="text-white">{result.metadataRiskLevel}</span>
+                          </p>
+                        )}
+                        {result.metadataFlags && result.metadataFlags.length > 0 && (
+                          <ul className="space-y-1">
+                            {result.metadataFlags.slice(0, 4).map((flag, idx) => (
+                              <li key={idx} className="text-xs text-white/50 leading-relaxed">
+                                - {flag}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {result.systemWarning && (
+                    <div className="pt-2">
+                      <p className="text-[10px] uppercase tracking-widest text-white/20 mb-2">System Warning</p>
+                      <div className="bg-rose-500/5 border border-rose-500/10 rounded-2xl p-4">
+                        <p className="text-xs text-rose-200/80 leading-relaxed">{result.systemWarning}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {result.geminiAnalysis && (
+                    <div className="pt-2">
+                      <p className="text-[10px] uppercase tracking-widest text-white/20 mb-2">Deep Analysis</p>
+                      <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4">
+                        <p className="text-xs text-white/60 leading-relaxed">{result.geminiAnalysis}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-6 border-t border-white/5">

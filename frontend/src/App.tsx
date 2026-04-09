@@ -18,19 +18,24 @@ export default function App() {
   const { isInitializing, hasEntered, result, error, setError } = useStore();
 
   return (
-    <div className="relative min-h-screen bg-black text-white selection:bg-emerald-500/30 overflow-x-hidden">
+    <div className="relative min-h-screen bg-black text-white selection:bg-emerald-500/30 overflow-x-hidden will-change-motion">
       <ThreeBackground />
       <GlassFilter />
       
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" onExitComplete={() => null}>
         {isInitializing ? (
           <LoadingScreen key="loading" />
         ) : !hasEntered ? (
           <IntroScreen key="intro" />
         ) : (
-          <main className="relative z-10">
+          <motion.main 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+            className="relative z-10"
+          >
             {result ? <Dashboard /> : <LandingPage />}
-          </main>
+          </motion.main>
         )}
       </AnimatePresence>
 
