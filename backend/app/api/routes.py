@@ -3,14 +3,12 @@ from fastapi.responses import JSONResponse
 import shutil
 import tempfile
 import os
-import cv2
-import numpy as np
 import asyncio
 import yt_dlp
 
-from ..models.schemas import URLRequest
-from ..services.downloader import download_video_with_ytdlp
-from ..services.inference import analyze_video_for_deepfakes, analyze_image_for_deepfakes
+from app.models.schemas import URLRequest
+from app.services.downloader import download_video_with_ytdlp
+from app.services.inference import analyze_video_for_deepfakes, analyze_image_for_deepfakes
 
 router = APIRouter()
 
@@ -59,21 +57,45 @@ async def analyze_video(file: UploadFile = File(...)):
         if temp_video_path and os.path.exists(temp_video_path):
             os.remove(temp_video_path)
 
+
 @router.post("/analyze_image")
 async def analyze_image(file: UploadFile = File(...)):
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
+  if not file.content_type.startswith("image/"):
+    raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
 
-    try:
-        contents = await file.read()
-        nparr = np.frombuffer(contents, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+  try:
+    # 1. Prepare the raw bytes
+    await file.seek(0)
+    contents = await file.read()
 
-        if img is None:
-            raise ValueError("Could not decode image data.")
+    if not contents:
+      raise HTTPException(status_code=400, detail="The uploaded file is empty.")
 
-        result = await asyncio.to_thread(analyze_image_for_deepfakes, img)
-        return JSONResponse(content=result)
+    # 2. STAGE 1: Fast Local Visual & Metadata Scan (from inference.py)
+    local_result = await asyncio.to_thread(analyze_image_for_deepfakes, contents)
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+    # 3. Determine if Stage 2 is needed
+    verdict = local_result["visual_analysis"]["verdict"]
+    confidence = local_result["visual_analysis"]["confidence"]
+    risk = local_result["metadata_analysis"]["risk_level"]
+
+    needs_deep_analysis = (
+        verdict == "Fake" or
+        risk == "High" or
+        (verdict == "Real" and confidence < 85.0)
+    )
+
+    if not needs_deep_analysis:
+      local_result["gemini_analysis"] = "Bypassed. Image passed local security thresholds."
+      return JSONResponse(content=local_result)
+
+    # 4. STAGE 2: Deep Contextual Analysis (from gemini_service.py)
+    gemini_text = await asyncio.to_thread(analyze_with_gemini, contents, local_result)
+    local_result["gemini_analysis"] = gemini_text
+
+    return JSONResponse(content=local_result)
+
+  except ValueError as ve:
+    raise HTTPException(status_code=400, detail=str(ve))
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")

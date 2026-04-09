@@ -1,2 +1,7 @@
+.env
 .venv
+.idea
+Dataset
+*__pycache__
 *_pycache*
+*.pyc
