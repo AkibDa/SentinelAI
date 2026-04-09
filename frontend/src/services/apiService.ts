@@ -1,105 +1,114 @@
+import { GoogleGenAI, Type } from '@google/genai';
+
 /**
  * SentinelAI API Service
- * Handles communication with FastAPI backend.
+ * Handles communication with FastAPI, n8n, and Gemini API.
  */
 
-const BASE_URL =
-  import.meta.env.VITE_API_URL ||
+const FASTAPI_URL =
   import.meta.env.VITE_FASTAPI_URL ||
-  'http://localhost:8080';
-const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
+  import.meta.env.VITE_API_URL ||
+  '/api';
+const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || '';
 
 export interface AnalysisResult {
   verdict: 'Real' | 'Fake';
   confidence: number;
-  framesAnalyzed: number;
-  suspiciousFrames: number;
-  rawScore?: number;
+  framesAnalyzed?: number;
+  suspiciousFrames?: number;
   sourceUrl?: string;
   timestamp: string;
+  reasoning?: string;
 }
-
-interface BackendAnalysisResult {
-  verdict: 'Real' | 'Fake' | string;
-  confidence: number;
-  frames_analyzed?: number;
-  suspicious_frames?: number;
-  raw_score?: number;
-  source_url?: string;
-}
-
-const toAnalysisResult = (payload: BackendAnalysisResult): AnalysisResult => ({
-  verdict: payload.verdict === 'Fake' ? 'Fake' : 'Real',
-  confidence: payload.confidence ?? 0,
-  framesAnalyzed: payload.frames_analyzed ?? 0,
-  suspiciousFrames: payload.suspicious_frames ?? 0,
-  rawScore: payload.raw_score,
-  sourceUrl: payload.source_url,
-  timestamp: new Date().toISOString(),
-});
 
 export const apiService = {
   /**
    * Pathway A: Local Upload
-   * Hits FastAPI server with multipart/form-data
    */
   analyzeFile: async (file: File): Promise<AnalysisResult> => {
     const formData = new FormData();
     formData.append('file', file);
 
     const endpoint = file.type.startsWith('video/') ? '/analyze_video' : '/analyze_image';
-    
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+
+    const response = await fetch(`${FASTAPI_URL}${endpoint}`, {
       method: 'POST',
       body: formData,
-      // Timeout handled by the caller or global config
     });
 
     if (!response.ok) {
       throw new Error(`Analysis failed: ${response.statusText}`);
     }
 
-    const json = (await response.json()) as BackendAnalysisResult;
-    return toAnalysisResult(json);
+    return response.json();
   },
 
   /**
    * Pathway B: URL Analysis
-   * Hits n8n webhook first, then falls back to FastAPI if unavailable
    */
   analyzeUrl: async (url: string): Promise<AnalysisResult> => {
-    const payload = JSON.stringify({ url });
-
-    if (N8N_WEBHOOK_URL) {
-      const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: payload,
-      });
-
-      if (!n8nResponse.ok) {
-        throw new Error(`n8n request failed: ${n8nResponse.statusText}`);
-      }
-
-      const n8nJson = (await n8nResponse.json()) as BackendAnalysisResult;
-      return toAnalysisResult(n8nJson);
+    if (!N8N_WEBHOOK_URL) {
+      throw new Error('n8n Webhook URL is not configured');
     }
 
-    const fastApiResponse = await fetch(`${BASE_URL}/analyze_url`, {
+    const response = await fetch(N8N_WEBHOOK_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: payload,
+      body: JSON.stringify({ url }),
     });
 
-    if (!fastApiResponse.ok) {
-      throw new Error(`URL analysis failed: ${fastApiResponse.statusText}`);
+    if (!response.ok) {
+      throw new Error(`URL analysis failed: ${response.statusText}`);
     }
 
-    const fastApiJson = (await fastApiResponse.json()) as BackendAnalysisResult;
-    return toAnalysisResult(fastApiJson);
+    return response.json();
+  },
+
+  /**
+   * Pathway C: Text Analysis (Fake News Detection)
+   * Uses Gemini API for semantic analysis
+   */
+  analyzeText: async (text: string): Promise<AnalysisResult> => {
+    try {
+      const geminiApiKey = process.env.GEMINI_API_KEY;
+      if (!geminiApiKey) {
+        throw new Error('GEMINI_API_KEY is missing. Set it in frontend env and restart Vite.');
+      }
+      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Analyze the following headline or news content for potential misinformation or "fake news" characteristics.
+        Provide a verdict (Real or Fake), a confidence score (0-100), and a brief reasoning.
+
+        Content: "${text}"`,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              verdict: { type: Type.STRING, enum: ['Real', 'Fake'] },
+              confidence: { type: Type.NUMBER },
+              reasoning: { type: Type.STRING },
+            },
+            required: ['verdict', 'confidence', 'reasoning'],
+          },
+        },
+      });
+
+      const data = JSON.parse(response.text ?? '{}');
+
+      return {
+        verdict: data.verdict as 'Real' | 'Fake',
+        confidence: data.confidence,
+        reasoning: data.reasoning,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('Gemini Analysis Error:', error);
+      throw new Error('Failed to analyze text. Please try again.');
+    }
   },
 };
