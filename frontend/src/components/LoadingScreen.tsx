@@ -29,7 +29,7 @@ export default function LoadingScreen() {
       className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black"
     >
       <div className="relative mb-8">
-        <Logo size={80} />
+        <Logo size={576} />
       </div>
 
       <div className="w-64 space-y-4">

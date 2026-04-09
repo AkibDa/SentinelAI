@@ -101,7 +101,7 @@ export default function LandingPage() {
             </h1>
             <div className="h-[140px] flex items-center justify-center w-full">
               <GooeyText
-                texts={["Sentinel AI", "Visual Truth", "Neural Core", "Forensics"]}
+                texts={["Sentinel AI", "Visual Truth", "Neural Core", "Fake News"]}
                 morphTime={1.5}
                 cooldownTime={1}
                 className="font-medium tracking-tighter"
@@ -110,10 +110,12 @@ export default function LandingPage() {
             </div>
           </motion.div>
 
-          <p className="text-lg text-white/40 max-w-xl mx-auto font-light tracking-wide relative z-20">
-            Advanced neural forensics for real-time deepfake detection. 
-            Protecting truth in the age of synthetic media.
-          </p>
+          <div className="flex flex-col items-center gap-6 relative z-20">
+            <p className="text-lg text-white/40 max-w-xl mx-auto font-light tracking-wide">
+              Advanced neural forensics for real-time deepfake detection. 
+              Protecting truth in the age of synthetic media.
+            </p>
+          </div>
         </div>
 
         {/* Input Hub */}
@@ -127,16 +129,16 @@ export default function LandingPage() {
                 <button
                   onClick={() => setActiveTab('upload')}
                   className={cn(
-                    "flex-1 py-4 text-xs uppercase tracking-[0.2em] transition-all duration-300",
+                    "flex-1 py-4 text-[10px] uppercase tracking-[0.2em] transition-all duration-300",
                     activeTab === 'upload' ? "text-emerald-500 bg-white/[0.05]" : "text-white/30 hover:text-white/60"
                   )}
                 >
-                  Local Upload
+                  Local Media
                 </button>
                 <button
                   onClick={() => setActiveTab('link')}
                   className={cn(
-                    "flex-1 py-4 text-xs uppercase tracking-[0.2em] transition-all duration-300",
+                    "flex-1 py-4 text-[10px] uppercase tracking-[0.2em] transition-all duration-300",
                     activeTab === 'link' ? "text-emerald-500 bg-white/[0.05]" : "text-white/30 hover:text-white/60"
                   )}
                 >
@@ -144,7 +146,7 @@ export default function LandingPage() {
                 </button>
               </div>
 
-            <div className="p-8">
+            <div className="p-8 min-h-[300px] flex flex-col justify-center">
               <AnimatePresence mode="wait">
                 {activeTab === 'upload' ? (
                   <motion.div

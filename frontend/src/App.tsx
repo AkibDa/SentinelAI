@@ -11,19 +11,16 @@ import LoadingScreen from './components/LoadingScreen';
 import IntroScreen from './components/IntroScreen';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
-import ApiPage from './components/ApiPage';
-import StatusBadge from './components/StatusBadge';
 import { GlassFilter } from './components/ui/liquid-glass';
 import Logo from './components/Logo';
 
 export default function App() {
-  const { isInitializing, hasEntered, result, error, setError, currentPage, setCurrentPage } = useStore();
+  const { isInitializing, hasEntered, result, error, setError } = useStore();
 
   return (
     <div className="relative min-h-screen bg-black text-white selection:bg-emerald-500/30 overflow-x-hidden">
       <ThreeBackground />
       <GlassFilter />
-      <StatusBadge />
       
       <AnimatePresence mode="wait">
         {isInitializing ? (
@@ -31,14 +28,8 @@ export default function App() {
         ) : !hasEntered ? (
           <IntroScreen key="intro" />
         ) : (
-          <main key={currentPage} className="relative z-10">
-            {currentPage === 'api' ? (
-              <ApiPage />
-            ) : result ? (
-              <Dashboard />
-            ) : (
-              <LandingPage />
-            )}
+          <main className="relative z-10">
+            {result ? <Dashboard /> : <LandingPage />}
           </main>
         )}
       </AnimatePresence>

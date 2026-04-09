@@ -2,26 +2,30 @@
 
 import os
 import io
-from dotenv import load_dotenv
-import google.generativeai as genai
 from PIL import Image
 
-load_dotenv()
-
-my_api_key = os.getenv("GOOGLE_API_KEY")
-
-if not my_api_key:
-    raise ValueError("GOOGLE_API_KEY is missing from .env")
-
-genai.configure(api_key=my_api_key)
-gemini_model = genai.GenerativeModel('gemini-2.5-flash')
+try:
+  from dotenv import load_dotenv
+  load_dotenv()
+except Exception:
+  # Keep working even when python-dotenv is not installed.
+  pass
 
 
 def analyze_with_gemini(image_bytes: bytes, local_result: dict) -> str:
   """
   Sends the image and the local model's findings to Gemini for deep contextual analysis.
   """
+  my_api_key = os.getenv("GOOGLE_API_KEY")
+  if not my_api_key:
+    return "Deep contextual analysis unavailable: GOOGLE_API_KEY is not configured."
+
   try:
+    import google.generativeai as genai
+
+    genai.configure(api_key=my_api_key)
+    gemini_model = genai.GenerativeModel("gemini-2.5-flash")
+
     pil_img = Image.open(io.BytesIO(image_bytes))
 
     visual_verdict = local_result["visual_analysis"]["verdict"]
