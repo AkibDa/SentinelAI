@@ -14,30 +14,28 @@ export default function ApiPage() {
   };
 
   const codeSnippets = {
-    curl: `curl -X POST https://api.sentinelai.io/v1/analyze \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -F "file=@video.mp4"`,
+    curl: `curl -X GET http://localhost:8080/`,
     python: `import requests
 
-url = "https://api.sentinelai.io/v1/analyze"
-files = {"file": open("video.mp4", "rb")}
-headers = {"Authorization": "Bearer YOUR_API_KEY"}
+url = "http://localhost:8080/analyze_url"
+payload = {"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}
 
-response = requests.post(url, files=files, headers=headers)
+response = requests.post(url, json=payload)
 print(response.json())`,
-    node: `const axios = require('axios');
-const FormData = require('form-data');
-const fs = require('fs');
+    node: `import { useEffect, useState } from 'react';
 
-const form = new FormData();
-form.append('file', fs.createReadStream('video.mp4'));
+export default function HealthCheck() {
+  const [data, setData] = useState(null);
 
-axios.post('https://api.sentinelai.io/v1/analyze', form, {
-  headers: {
-    ...form.getHeaders(),
-    'Authorization': 'Bearer YOUR_API_KEY'
-  }
-}).then(res => console.log(res.data));`
+  useEffect(() => {
+    fetch('http://localhost:8080/')
+      .then((response) => response.json())
+      .then((json) => setData(json))
+      .catch((error) => console.error('Error fetching data:', error));
+  }, []);
+
+  return <pre>{JSON.stringify(data, null, 2)}</pre>;
+}`
   };
 
   return (
@@ -82,8 +80,8 @@ axios.post('https://api.sentinelai.io/v1/analyze', form, {
             <div className="space-y-6">
               <h2 className="text-2xl font-medium text-white">Authentication</h2>
               <p className="text-white/40 text-sm leading-relaxed">
-                All API requests must include your API Key in the <code className="text-emerald-400 bg-emerald-500/10 px-1 rounded">Authorization</code> header. 
-                You can manage your keys in the developer dashboard.
+                For local development, call the FastAPI server directly at <code className="text-emerald-400 bg-emerald-500/10 px-1 rounded">http://localhost:8080</code>. 
+                If you deploy publicly, add auth and TLS before exposing endpoints.
               </p>
             </div>
 
@@ -92,18 +90,35 @@ axios.post('https://api.sentinelai.io/v1/analyze', form, {
               <div className="space-y-4">
                 <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-bold bg-emerald-500 text-black px-2 py-0.5 rounded">POST</span>
-                    <span className="text-xs font-mono text-white/60">/v1/analyze</span>
+                    <span className="text-[10px] font-bold bg-emerald-500 text-black px-2 py-0.5 rounded">GET</span>
+                    <span className="text-xs font-mono text-white/60">/</span>
                   </div>
-                  <p className="text-[11px] text-white/30">Analyze a local video or image file for synthetic artifacts.</p>
+                  <p className="text-[11px] text-white/30">Health check endpoint to verify backend connectivity from the frontend.</p>
                 </div>
                 <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
                   <div className="flex items-center gap-3">
                     <span className="text-[10px] font-bold bg-emerald-500 text-black px-2 py-0.5 rounded">POST</span>
-                    <span className="text-xs font-mono text-white/60">/v1/analyze-url</span>
+                    <span className="text-xs font-mono text-white/60">/analyze_url</span>
                   </div>
                   <p className="text-[11px] text-white/30">Analyze media from a remote URL (YouTube, X, etc).</p>
                 </div>
+                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-bold bg-emerald-500 text-black px-2 py-0.5 rounded">POST</span>
+                    <span className="text-xs font-mono text-white/60">/analyze_video | /analyze_image</span>
+                  </div>
+                  <p className="text-[11px] text-white/30">Analyze uploaded local files with multipart form data.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <h2 className="text-2xl font-medium text-white">Communication Flow</h2>
+              <div className="space-y-3 text-white/40 text-sm leading-relaxed">
+                <p><span className="text-white/70">Request:</span> Frontend sends an HTTP request to <code className="text-emerald-400 bg-emerald-500/10 px-1 rounded">http://localhost:8080</code>.</p>
+                <p><span className="text-white/70">CORS Check:</span> Browser preflight verifies the backend allows your frontend origin.</p>
+                <p><span className="text-white/70">Processing:</span> FastAPI handles route logic in the backend API router and returns JSON.</p>
+                <p><span className="text-white/70">Response:</span> Frontend receives the JSON and updates UI state.</p>
               </div>
             </div>
           </div>
